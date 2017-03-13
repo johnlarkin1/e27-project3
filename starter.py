@@ -1,9 +1,50 @@
 #!/usr/bin/env python
 
 import cv2
-import numpy
+import numpy as np
 import sys
 import os
+
+def fixKeyCode(code):
+	# need this to fix our opencv bug
+    return np.uint8(code).view(np.int8)
+
+def labelAndWaitForKey(image, text):
+
+    # Get the image height - the first element of its shape tuple.
+    h = image.shape[0]
+
+    display = image.copy()
+
+
+    text_pos = (16, h-16)                # (x, y) location of text
+    font_face = cv2.FONT_HERSHEY_SIMPLEX # identifier of font to use
+    font_size = 1.0                      # scale factor for text
+    
+    bg_color = (0, 0, 0)       # RGB color for black
+    bg_size = 3                # background is bigger than foreground
+    
+    fg_color = (255, 255, 255) # RGB color for white
+    fg_size = 1                # foreground is smaller than background
+
+    line_style = cv2.LINE_AA   # make nice anti-aliased text
+
+    # Draw background text (outline)
+    cv2.putText(display, text, text_pos,
+                font_face, font_size,
+                bg_color, bg_size, line_style)
+
+    # Draw foreground text (middle)
+    cv2.putText(display, text, text_pos,
+                font_face, font_size,
+                fg_color, fg_size, line_style)
+
+    cv2.imshow('Image', display)
+
+    # We could just call cv2.waitKey() instead of using a while loop
+    # here, however, on some platforms, cv2.waitKey() doesn't let
+    # Ctrl+C interrupt programs. This is a workaround.
+    while fixKeyCode(cv2.waitKey(15)) < 0: pass
 
 # Get command line arguments or print usage and exit
 if len(sys.argv) > 2:
@@ -43,4 +84,4 @@ disparity = matcher.compute(cam_image, proj_image) / 16.0
 
 # Pop up the disparity image.
 cv2.imshow('Disparity', disparity/disparity.max())
-while cv2.waitKey(5) < 0: pass
+while fixKeyCode(cv2.waitKey(5)) < 0: pass
