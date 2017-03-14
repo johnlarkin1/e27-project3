@@ -85,3 +85,39 @@ disparity = matcher.compute(cam_image, proj_image) / 16.0
 # Pop up the disparity image.
 cv2.imshow('Disparity', disparity/disparity.max())
 while fixKeyCode(cv2.waitKey(5)) < 0: pass
+
+# Set up our intrinsic parameter matrix
+#
+#     [ f 0 u_0]
+# K = [ 0 f v_0]
+#     [ 0 0  1 ]
+
+# Parameters:
+f = 600
+u_0 = 320
+v_0 = 240
+
+# Matrix:
+K = f * np.eye(3)
+K[2,2] = 1
+K[0,2] = u_0
+K[1,2] = v_0
+
+baseline = 0.05 #in meters
+b = np.array([baseline, 0, 0])
+
+# Recall 
+# [u; v; 1] = K [X; Y; Z]
+# or q = K [X; Y; Z]
+# Mapping each point $$q$$ through K^-1 will return a point P which is proportional to X, Y, Z
+# The Z coordiante of each point P can be obtained by examining the disparity value 
+# delta at each (u, v) location via:
+# 
+#         Z = (b * f) / delta
+#
+Zmax = 8 # meters
+
+Z = np.zeros(disparity.size)
+Z = (baseline * f) / disparity.flatten()
+print(len(Z))
+
