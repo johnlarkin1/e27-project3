@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import sys
 import os
+import cmath
 
 def fixKeyCode(code):
 	# need this to fix our opencv bug
@@ -103,7 +104,8 @@ K[2,2] = 1
 K[0,2] = u_0
 K[1,2] = v_0
 
-baseline = 0.05 #in meters
+# Baseline is in meters
+baseline = 0.05 
 b = np.array([baseline, 0, 0])
 
 # Recall 
@@ -120,27 +122,95 @@ Zmax = 8 # meters
 Z = np.zeros(disparity.size)
 Z = (baseline * f) / disparity.flatten()
 
-# need to somehow make sure the max value is Zmax
-# something like Z = max(Zmax, Z), but that won't work syntatically
+# We want to restrict the max depth 
+# Matt suggests using Zmax = 8
+# Let's use np.clip and pass in None for the minimum
+Z = np.clip(Z, None, Zmax)
 
-# Then we have the following two equations: 
+# Initialize to the appropriate size
 X = np.zeros(disparity.size)
 Y = np.zeros(disparity.size)
 
-K_inv = np.linalg.inv(K)
-#p = np.dot(K_inv, disparity)
-
+# Let's calculate the pixel coordinates using np.arange
 u_pixels = np.arange(cam_image.shape[0])
 v_pixels = np.arange(cam_image.shape[1])
 
+# Create a meshgrid for the helper function to check
+up, vp = np.meshgrid(u_pixels, v_pixels)
 
+# Calculate X and Y; NOTE: forgetting the Z still
 X = (u_pixels - u_0) / f
 Y = (v_pixels - v_0) / f
 
+# Create the appropriate meshgrid
 Xv, Yv = np.meshgrid(X, Y)
-print Xv, Yv
 
-# still need to multiply our pixels by Z or include vectorization somehow 
+# Flatten them so they're just long vectors
+X =  Xv.flatten()
+Y =  Yv.T.flatten()
+
+# Multiply the two vectors point wise so that the proportionality is scaled
+X = Z * X
+Y = Z * Y
+
+def check_pixels(u_pix, v_pix, Xv, Yv, Zvals, u0, v0, f):
+    '''
+    Info:
+        This helper function takes the meshgrid of X and Y BEFORE being multiplied by Z 
+        and checks to make sure that the math was done correctly. 
+
+        In other words, makes sure that:
+            X = Z * (u - u0) / f
+            Y = Z * (v - v0) / f
+        
+        Note, Z must be reshaped into a grid of the same size as Xv and Yv
+
+        All three of Xv, Yv, and Z must be the same shape. 
+
+        Returns: 
+            TRUE  - if the calculation is done correctly and the transformations make sense
+            FALSE - otherwise
+    '''
+
+    # Reshape our Z so that it'd 2D just like Xv and Yv
+    Z = Zvals.reshape(Xv.shape)
+
+    # Create the appropriate equations
+    # Don't forget, we didn't multiply the left hand side by Z before passing that in so double check
+    u_lhs = Z * Xv
+    u_rhs = Z * (u_pix - u0)/f
+
+    # Repeat the same for the Y's and v's 
+    v_lhs = Z * Yv
+    v_rhs = Z * (v_pix - v0)/f
+
+    # Use pythonic check to make sure every value in our 2D array is the same
+    # Note, we need to use np.isclose to make sure that the floats are actually equal
+
+    if all(all(val for val in row) for row in np.isclose(u_lhs, u_rhs, rtol=1e-5)) and \
+        all(all(val for val in row) for row in np.isclose(v_lhs, v_rhs, rtol=1e-5)):
+        return True
+    return False
+
+# Let's make sure that everything matches and our equations work out
+print("The transformation has been computed successfully? (T/F)")
+print(check_pixels(up, vp, Xv, Yv, Z, u_0, v_0, f))
+
+# Form one 3 x n matrix just to use available methods
+# Not sure how to skip the transpose in the next line
+final = np.vstack((X, Y, Z))
+
+# Transpose so it's in the right n x 3 format
+final = final.T
+
+print final.shape
+
+# Note, in python 3 change raw_input --> input
+fname = raw_input("What file would you like to save your transformation to?: ")
+np.savez(fname, final)
+
+
+
 
 
 
