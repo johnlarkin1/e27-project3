@@ -93,7 +93,7 @@ while fixKeyCode(cv2.waitKey(5)) < 0: pass
 #     [ 0 0  1 ]
 
 # Parameters:
-f = 600
+f = 600.0
 u_0 = 320
 v_0 = 240
 
@@ -119,5 +119,31 @@ Zmax = 8 # meters
 
 Z = np.zeros(disparity.size)
 Z = (baseline * f) / disparity.flatten()
-print(len(Z))
+
+# need to somehow make sure the max value is Zmax
+# something like Z = max(Zmax, Z), but that won't work syntatically
+
+# Then we have the following two equations: 
+X = np.zeros(disparity.size)
+Y = np.zeros(disparity.size)
+
+K_inv = np.linalg.inv(K)
+#p = np.dot(K_inv, disparity)
+
+u_pixels = np.arange(cam_image.shape[0])
+v_pixels = np.arange(cam_image.shape[1])
+
+
+X = (u_pixels - u_0) / f
+Y = (v_pixels - v_0) / f
+
+Xv, Yv = np.meshgrid(X, Y)
+print Xv, Yv
+
+# still need to multiply our pixels by Z or include vectorization somehow 
+
+
+
+
+
 
