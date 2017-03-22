@@ -122,18 +122,24 @@ Zmax = 8 # meters
 Z = np.zeros(disparity.size)
 Z = (baseline * f) / disparity.flatten()
 
+
 # We want to restrict the max depth 
 # Matt suggests using Zmax = 8
 # Let's use np.clip and pass in None for the minimum
-Z = np.clip(Z, None, Zmax)
+# Actually, let's NOT use np.clip let's just make a mask
+min_d = baseline * f / (Zmax)
+mask = disparity > min_d
+
+# Flatten our mask out so the dimensions work out
+mask = mask.flatten()
 
 # Initialize to the appropriate size
 X = np.zeros(disparity.size)
 Y = np.zeros(disparity.size)
 
 # Let's calculate the pixel coordinates using np.arange
-u_pixels = np.arange(cam_image.shape[0])
-v_pixels = np.arange(cam_image.shape[1])
+u_pixels = np.arange(cam_image.shape[1])
+v_pixels = np.arange(cam_image.shape[0])
 
 # Create a meshgrid for the helper function to check
 up, vp = np.meshgrid(u_pixels, v_pixels)
@@ -147,7 +153,7 @@ Xv, Yv = np.meshgrid(X, Y)
 
 # Flatten them so they're just long vectors
 X =  Xv.flatten()
-Y =  Yv.T.flatten()
+Y =  Yv.flatten()
 
 # Multiply the two vectors point wise so that the proportionality is scaled
 X = Z * X
@@ -198,7 +204,8 @@ print(check_pixels(up, vp, Xv, Yv, Z, u_0, v_0, f))
 
 # Form one 3 x n matrix just to use available methods
 # Not sure how to skip the transpose in the next line
-final = np.vstack((X, Y, Z))
+# Don't forget about the mask
+final = np.vstack((X[mask], Y[mask], Z[mask]))
 
 # Transpose so it's in the right n x 3 format
 final = final.T
